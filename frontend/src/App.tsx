@@ -1,23 +1,49 @@
-import React from 'react';
-import { ReactKeycloakProvider } from '@react-keycloak/web';
-import Keycloak, { KeycloakConfig } from 'keycloak-js';
+//import React from 'react';
+import { RouterProvider, createBrowserRouter, useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { useEffect, useRef, useState, createContext, useContext, useCallback } from 'react'
+
 import ReportPage from './components/ReportPage';
 
-const keycloakConfig: KeycloakConfig = {
-  url: process.env.REACT_APP_KEYCLOAK_URL,
-  realm: process.env.REACT_APP_KEYCLOAK_REALM||"",
-  clientId: process.env.REACT_APP_KEYCLOAK_CLIENT_ID||""
-};
+axios.defaults.withCredentials = true
 
-const keycloak = new Keycloak(keycloakConfig);
+const serverUrl = "http://localhost:8084//process.env.REACT_APP_SERVER_URL
 
+const AuthContext = createContext();
+
+const AuthContextProvider = ({ children }) => {
+  const [loggedIn, setLoggedIn] = useState(null)
+  const [user, setUser] = useState(null)
+
+const checkLoginState = useCallback(async () => {
+    try {
+      const {
+        data: { loggedIn: logged_in, user },
+      } = await axios.get(`${serverUrl}/auth/logged_in`)
+      setLoggedIn(logged_in)
+      user && setUser(user)
+    } catch (err) {
+      console.error(err)
+    }
+}, [])
+
+useEffect(() => {
+    checkLoginState()
+}, [checkLoginState])
+
+  return (
+    <AuthContext.Provider value={{ loggedIn, checkLoginState, user }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
 const App: React.FC = () => {
   return (
-    <ReactKeycloakProvider authClient={keycloak}>
+    <AuthContext.Provider value={{ loggedIn, checkLoginState, user }}>
       <div className="App">
         <ReportPage />
       </div>
-    </ReactKeycloakProvider>
+    </AuthContext.Provider>
   );
 };
 
