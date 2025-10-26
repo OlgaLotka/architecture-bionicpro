@@ -1,0 +1,108 @@
+version: '3.9'
+
+services:
+  keycloak_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: keycloak_user
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - ./postgres-keycloak-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: keycloak_password
+    command: 
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak_db
+  #frontend1:
+    #build:
+      #context: ./frontend
+      #dockerfile: Dockerfile
+    #ports:
+     # - "3000:3000"
+    #environment:
+      #REACT_APP_API_URL: http://localhost:8000
+      #REACT_APP_KEYCLOAK_URL: http://localhost:8084
+      #REACT_APP_KEYCLOAK_REALM: reports-realm
+      #REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
+
+
+  postgres16:
+    image: postgres:16.0
+    volumes:
+      - database_data_16:/var/lib/postgresql/data
+      - ./dag/sql/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+        - airflow
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - dag_sample
+
+  bionicpro_db:
+    image: postgres:16.0
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: postgres
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - dag_sample
+
+networks:
+  dag_sample:
+
+volumes:
+  database_data:
+    driver: local
+  database_data_16:
+    driver: local
+
