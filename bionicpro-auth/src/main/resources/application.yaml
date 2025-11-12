@@ -1,25 +1,46 @@
 
 server:
   port: ${SERVER_PORT:8084}
+logging:
+  level:
+    org.springframework.security: TRACE
 
 spring:
   application.name: ${APPLICATION_NAME:spring-security-keycloak}
   security:
     oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri:  http://localhost:8086/realms/reports-realm
       client:
         registration:
           keycloak:
-            client-id: reports-frontend
-            client-secret: oNwoLQdvJAvRcL89SydqCWCe5ry1jMgq
+            client-id: reports-realm #reports-frontend
+            client-secret: JLIDotzrPjwQEvJQX7dtDGxnmm2wHLW9
             scope: openid, profile
             authorization-grant-type: authorization_code
+            redirect-uri: http://localhost:3000/
         provider:
           keycloak:
-            issuer-uri: http://localhost:8080/realms/reports-realm
+            issuer-uri: http://localhost:8086/realms/reports-realm
             #user-name-attribute: preferred_username
+  data: # For Spring Boot 3.x and newer
+    redis:
+      host: localhost
+      port: 6379
+      #password: your_redis_password # Optional, if your Redis instance requires a password
+     # database: 0 # Optional, default is 0
+      timeout: 60000
+
 keycloak:
-  server-url: http://localhost:8080
-  redirect-uri: http://localhost:8080
+  #server-url: http://localhost:8086
+  #redirect-uri: http://localhost:8086
   realm: reports-realm
-  username: admin1
-  password: admin123
+  authServerUrl: http://localhost:8086
+
+  resource: reports-realm
+  credentials:
+    provider: secret
+    secret: JLIDotzrPjwQEvJQX7dtDGxnmm2wHLW9
+    #username: admin1
+    #password: admin123

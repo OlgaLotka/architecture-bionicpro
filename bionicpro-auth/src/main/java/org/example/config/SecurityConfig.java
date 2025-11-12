@@ -1,34 +1,31 @@
 package org.example.config;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-import java.net.URI;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
+import lombok.val;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.adapters.springboot.KeycloakSpringBootProperties;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.authorization.client.AuthzClient;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
-import org.springframework.security.core.session.SessionRegistryImpl;
-import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-
-
 
 
 @Configuration
-
+@EnableWebSecurity
 @EnableMethodSecurity(
         securedEnabled = true,
         jsr250Enabled = true
@@ -36,20 +33,58 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         DefaultSecurityFilterChain build = http.authorizeHttpRequests(authorise ->
                         authorise
-                                .requestMatchers("/auth/**")
+                                .requestMatchers("/auth/**", "/authorization/**")
                                 .permitAll()
                                 .anyRequest()
-                                .authenticated())
+                                .permitAll()
+                                )
+
                 .csrf(AbstractHttpConfigurer::disable)
+                //.oauth2ResourceServer((oauth2) -> oauth2.jwt())
+                //.addFilterBefore(jwtAuthorizationTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(authorise -> authorise.accessDeniedPage("/access-denied"))
-                .oauth2Login(withDefaults())
-                .logout(logout ->
-                        logout.logoutSuccessHandler(oidcLogoutSuccessHandler)).build();
+                /*.oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()).authenticationEntryPoint((request, response, exception) -> {
+                    System.out.println("Authentication failed"); // here I set a break point and I get the cause of exception
+                    BearerTokenAuthenticationEntryPoint delegate = new BearerTokenAuthenticationEntryPoint();
+                    delegate.commence(request, response, exception);}))*/
+                //.oauth2Client(withDefaults())
+                //.oauth2Login(withDefaults())
+                .build();
         return build;
     }
+
+    @ConfigurationProperties(prefix = "keycloak")
+    @Bean
+    public KeycloakSpringBootProperties keycloakSpringBootProperties(){
+        return new KeycloakSpringBootProperties();
+    }
+
+    @Bean
+    public Keycloak keycloak(KeycloakSpringBootProperties props) {
+        return KeycloakBuilder.builder()
+                .serverUrl(props.getAuthServerUrl())
+                .realm(props.getRealm())
+                .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+                .clientId(props.getResource())
+                //.username((String) props.getCredentials().get("username"))
+                //.password((String) props.getCredentials().get("password"))
+                .clientSecret((String) props.getCredentials().get("secret"))
+                .build();
+    }
+
+
+    @Bean
+    public AuthzClient keycloakAuthzClient(KeycloakSpringBootProperties props) {
+        val config = new org.keycloak.authorization.client.Configuration(
+                props.getAuthServerUrl(), props.getRealm(),
+                props.getResource(), props.getCredentials(), null);
+
+        return AuthzClient.create(config);
+    }
+
 
     @Bean
     @SuppressWarnings("unchecked")
@@ -73,14 +108,7 @@ public class SecurityConfig {
         };
     }
 
-    @Bean
-    OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler(ClientRegistrationRepository clientRegistrationRepository) {
-        OidcClientInitiatedLogoutSuccessHandler successHandler = new OidcClientInitiatedLogoutSuccessHandler(clientRegistrationRepository);
-        successHandler.setPostLogoutRedirectUri("http://localhost:8080/");
-        return successHandler;
-    }
-
-    @Bean
+   /* @Bean
     protected SessionAuthenticationStrategy sessionAuthenticationStrategy() {
         return new RegisterSessionAuthenticationStrategy(new SessionRegistryImpl());
     }
