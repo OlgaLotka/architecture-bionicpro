@@ -48,7 +48,7 @@ public class HelloController {
 
     @GetMapping("/report")
     //@PreAuthorize("hasRole('USER')")
-    public ResponseEntity<Object> getReport(@RequestHeader Map<String, String> headers) throws BadAuthorizeException {
+    public ResponseEntity<String> getReport(@RequestHeader Map<String, String> headers) throws BadAuthorizeException {
 
         return ResponseEntity.ok().body(null);
     }

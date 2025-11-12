@@ -1,5 +1,7 @@
 package org.example.token;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,9 +39,12 @@ public class JwtAuthorizationTokenFilter extends OncePerRequestFilter {
         } catch (BadAuthorizeException e) {
             throw new RuntimeException(e);
         }
+        DecodedJWT jwt = JWT.decode(responseMessage.getToken());
+        String name = jwt.getClaim("name").asString();
         //Токен теперь только наш
         //response.addHeader(HttpHeaders.AUTHORIZATION, responseMessage.getToken());
         response.addHeader("Set-Cookie", getCookie(responseMessage, codeVerifier));
+        response.addHeader("name", name);
         chain.doFilter(request, response);
     }
 
