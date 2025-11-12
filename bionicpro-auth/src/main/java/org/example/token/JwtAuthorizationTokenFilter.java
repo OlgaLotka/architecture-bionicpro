@@ -28,7 +28,8 @@ public class JwtAuthorizationTokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
         Credentials authorization = getCredentials(request);
-        Optional<String> sessionId = getSessionId(request);
+        Optional<String> sessionId = getSessionId(request, "session_id");
+        Optional<String> codeVerifier = getSessionId(request, "code_verifier");
 
         LoginResponseMessage responseMessage = null;
         try {
@@ -38,11 +39,15 @@ public class JwtAuthorizationTokenFilter extends OncePerRequestFilter {
         }
         //Токен теперь только наш
         //response.addHeader(HttpHeaders.AUTHORIZATION, responseMessage.getToken());
-        response.addHeader("Set-Cookie", "HttpOnly;" + "session_id:" + responseMessage.getSessionId());
+        response.addHeader("Set-Cookie", getCookie(responseMessage, codeVerifier));
         chain.doFilter(request, response);
     }
 
-
+    private static String getCookie(LoginResponseMessage responseMessage, Optional<String> codeVerifier) {
+        return "HttpOnly;"
+                + "session_id:" + responseMessage.getSessionId() +
+                ";code_verifier:" + codeVerifier.get() + ";";
+    }
 
 
 }

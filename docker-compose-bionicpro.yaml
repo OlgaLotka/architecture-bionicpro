@@ -29,6 +29,26 @@ services:
       - "8086:8080"
     depends_on:
       - keycloak_db
+
+  ldap-server:
+    image: osixia/openldap:latest
+    container_name: ldap-server
+    command: --copy-service
+    hostname: ldap-server
+    #command: ldapmodify -a -x -D cn=admin -w admin -f /data/config.ldif
+    volumes:
+      - ./ldap/config.ldif:/container/service/slapd/assets/config/bootstrap/ldif/50-bootstrap.ldif
+     # - ./ldap-data/ldap:/var/lib/ldap
+     # - ./ldap-data/config:/etc/ldap/slapd.d
+    environment:
+      LDAP_ORGANISATION: bionicpro_ldap
+      LDAP_DOMAIN: bionicproldap.com
+      LDAP_ADMIN_PASSWORD: adminadmin
+    #restart: unless-stopped
+    ports:
+      - "389:389"
+      - "636:636"
+
   #frontend1:
     #build:
       #context: ./frontend
@@ -105,4 +125,5 @@ volumes:
     driver: local
   database_data_16:
     driver: local
+  minio_storage: {}
 

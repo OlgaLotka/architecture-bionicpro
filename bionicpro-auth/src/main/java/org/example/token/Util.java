@@ -29,9 +29,9 @@ public class Util {
         }
     }
 
-    public static Optional<String> getSessionId(HttpServletRequest request) {
+    public static Optional<String> getSessionId(HttpServletRequest request, String cookieName) {
         Optional<Cookie> sessionId = Arrays.stream(request.getCookies())
-                .filter(e -> Objects.equals(e.getName(), "session_id"))
+                .filter(e -> Objects.equals(e.getName(), cookieName))
                 .findFirst();
         if (sessionId.isPresent()){
             return sessionId

@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.example.token.Util.decodeBasicAuthHeader;
 
@@ -31,7 +32,7 @@ public class HelloController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<LoginResponseMessage> getMe(@RequestHeader Map<String, String> headers) throws BadAuthorizeException {
         Credentials authorization = decodeBasicAuthHeader(headers.get("authorization"));
-        val responseMessage = authService.login(authorization, null);
+        val responseMessage = authService.login(authorization, Optional.empty());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(responseMessage);
     }
