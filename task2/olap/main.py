@@ -2,7 +2,10 @@ from flask import Flask, request, jsonify
 import requests, logging
 import psycopg2
 #import pkce
-import jwt
+from minio import Minio
+from minio.error import S3Error
+import csv
+import io
 
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
@@ -17,6 +20,25 @@ conn = psycopg2.connect(
     password="airflow"
 )
 
+minio_endpoint = "localhost:9000"  # Replace with your MinIO endpoint
+access_key = "minio_user"          # Replace with your access key
+secret_key = "minio_password"          # Replace with your secret key
+secure_connection = False          # Set to True if using HTTPS
+
+CDN_DOMAIN = 'localhost:8089' 
+    # Bucket and object details
+target_bucket = "my-test-bucket"
+target_object_name = "my-uploaded-file"
+
+
+client = Minio(
+        minio_endpoint,
+        access_key=access_key,
+        secret_key=secret_key,
+        secure=secure_connection
+)
+
+
 @app.route('/reports', methods=['GET'])
 def reports():
     code_verifier = request.headers.get('code_verifier')
@@ -29,13 +51,115 @@ def reports():
         #print(decoded_token)
     # val = ''+ 'client_id=1'
         user_id = response.headers.get("name")
+        file_name = target_object_name + user_id + ".csv"
+        file_from_s3 = find_file_to_minio(client, target_bucket, file_name, user_id)
+        if file_from_s3 is not None:
+            report_data = {
+                "id": user_id,
+                "name": file_name,
+                "data": file_from_s3,
+                "direct_url": get_cdn_url(file_name)
+                }
+            return jsonify(report_data)
         param  = request.data
         cur = conn.cursor()
 
         #cur.execute("SELECT * FROM data where %s", val)
         cur.execute("SELECT * FROM data where client_id= %s ", (user_id,))
         rows = cur.fetchall()
-        return rows
+        output_file = io.StringIO()
+        writer = csv.writer(output_file)
+        writer.writerows(rows)
+        output_file.seek(0)
+        output_file.flush() 
+        csv_content_string = output_file.getvalue()
+        output_file.close()
+        upload_file_to_minio(client, target_bucket, file_name, csv_content_string)
+        report_data = {
+            "id": user_id,
+            "name": file_name,
+            "data": rows,
+            "direct_url": get_cdn_url(file_name) #"http://"+minio_endpoint+"/"+target_bucket+"/"+file_name
+        }
+    
+        return jsonify(report_data)
+    
+def find_file_to_minio(minio_client, bucket_name, object_name, user_id):
+
+    try:
+        # Check if the bucket exists, create it if not
+
+        response = minio_client.get_object(target_bucket, object_name)
+        
+        # Read data from the response stream
+        print(f"'{object_name}' successfully find ' to bucket '{bucket_name}'.")
+        bytes_data = response.read()
+
+        # 3. Decode the bytes to a string (assuming UTF-8 encoding)
+        csv_string = bytes_data.decode('utf-8')
+
+        # 4. Wrap the string in a StringIO object to treat it as a file
+        csv_file = io.StringIO(csv_string)
+
+        # 5. Use the csv.reader to parse the data
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        
+        # Iterate over rows
+        data_as_array = []
+        for row in csv_reader:
+            data_as_array.append(row)
+        return data_as_array
+        
+
+    except S3Error as err:
+        print(f"Error uploading file: {err}")
+    #finally:
+    # 4. CRITICAL: Always close the response object to release the connection
+        #if response:
+            #response.close()
+            #response.release_conn()
+
+def upload_file_to_minio(minio_client, bucket_name, object_name, csv_content_string):
+    data_stream = None 
+    data_length = None 
+    try:
+        # Check if the bucket exists, create it if not
+        if not minio_client.bucket_exists(bucket_name):
+            minio_client.make_bucket(bucket_name)
+            print(f"Bucket '{bucket_name}' created successfully.")
+        if not csv_content_string:
+            print("No data provided to upload.")
+            return
+        csv_content_bytes = csv_content_string.encode('utf-8')
+
+            # Wrap the bytes in an io.BytesIO buffer to act as an in-memory file stream
+        data_stream = io.BytesIO(csv_content_bytes)
+
+            # Get the exact length of the bytes data (required by put_object)
+        data_length = len(csv_content_bytes)
+        # Upload the file
+        result = minio_client.put_object(
+            bucket_name,
+            object_name,
+            data_stream,
+            data_length,
+            content_type='text/csv'
+        )
+        print(f"'File successfully uploaded as '{object_name}' to bucket '{bucket_name}'.")
+
+    except S3Error as err:
+        print(f"Error uploading file: {err}")
+    finally:
+        # The finally block can safely check if the variable was ever assigned
+        if data_stream:
+            data_stream.close()
+def get_cdn_url(object_name):
+    """
+    Генерирует URL для доступа к файлу через CDN.
+    """
+    # Формат URL для CloudFront: https://<CDN_DOMAIN>/<OBJECT_NAME>
+    cdn_url = f"https://{CDN_DOMAIN}/{object_name}"
+    return cdn_url
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8085, debug=True)
