@@ -91,8 +91,104 @@ services:
     networks:
       - dag_sample
 
+  zookeeper:
+    image: quay.io/debezium/zookeeper:3.0.0.Final
+    hostname: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - dag_sample
+
+  kafka-debezium:
+    image: quay.io/debezium/kafka:3.0.0.Final
+    depends_on:
+      - zookeeper
+
+    links:
+       - zookeeper
+    ports:
+      #- "9093:9093"
+      - "29092:29092"
+
+    environment:
+      #KAFKA_PROCESS_ROLES: broker, controller
+      BROKER_ID: 1
+      #KAFKA_NODE_ID: 1
+     # NODE_ID: 1
+      #KAFKA_NODE_ROLE: combined
+      ZOOKEEPER_CONNECT: zookeeper:2181
+
+      LISTENERS: PLAINTEXT://0.0.0.0:29092, BROKER://0.0.0.0:9093
+      ADVERTISED_LISTENERS: PLAINTEXT://localhost:29092, BROKER://kafka:9093
+      LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT, BROKER:PLAINTEXT
+      INTER_BROKER_LISTENER_NAME: BROKER
+
+      #KAFKA_CONTROLLER_LISTENER_NAMES: BROKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      #KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+    volumes:
+      - kafka-data-2:/var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - dag_sample
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:3.0.0.Final
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-kafka-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093 # Connect via internal broker address
+    depends_on:
+      kafka-debezium:
+        condition: service_healthy
+
+  connect:
+    image: quay.io/debezium/connect:3.0.0.Final
+    ports:
+      - "8083:8083"
+    hostname: connect
+    environment:
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+      AUTO_CREATE_TOPICS_ENABLE: true
+      BOOTSTRAP_SERVERS: kafka:9093
+    restart: always
+    #links:
+     # - zookeeper
+    depends_on:
+      - kafka-debezium
+        #condition: service_healthy
+      - postgres16
+        #condition: service_healthy
+    networks:
+      - dag_sample
+
+  connector-registrator:
+    image: appropriate/curl:latest
+    container_name: connector-registrator
+    depends_on:
+      - connect
+    volumes:
+      - ./debezium/connector-config.json:/connector-config.json:ro
+      - ./debezium/register-connector.sh:/register-connector.sh:ro
+    command: bash /debezium/register-connector.sh
+    networks:
+      - dag_sample
+
   bionicpro_db:
-    image: postgres:16.0
+    image: quay.io/debezium/postgres:16
     volumes:
       - database_data:/var/lib/postgresql/data
     ports:
@@ -122,6 +218,8 @@ services:
       context: ./task2/olap
       dockerfile: Dockerfile
     container_name: report-service
+    env_file:
+      - ./task2/olap/app.env
     ports:
       - "8085:80"
     depends_on:
@@ -187,6 +285,7 @@ services:
       - nginx-server
 networks:
   dag_sample:
+    driver: bridge
 
 volumes:
   database_data:
@@ -194,4 +293,5 @@ volumes:
   database_data_16:
     driver: local
   minio_storage: {}
+  kafka-data-2: {}
 

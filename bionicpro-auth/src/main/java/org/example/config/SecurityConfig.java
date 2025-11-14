@@ -32,6 +32,9 @@ import org.springframework.security.web.SecurityFilterChain;
 )
 public class SecurityConfig {
 
+    /*@Autowired
+    JwtAuthorizationTokenFilter jwtAuthorizationTokenFilter;*/
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         DefaultSecurityFilterChain build = http.authorizeHttpRequests(authorise ->
@@ -112,5 +115,20 @@ public class SecurityConfig {
     protected SessionAuthenticationStrategy sessionAuthenticationStrategy() {
         return new RegisterSessionAuthenticationStrategy(new SessionRegistryImpl());
     }
+
+    @Bean
+    @Scope(scopeName = WebApplicationContext.SCOPE_REQUEST,
+            proxyMode = ScopedProxyMode.TARGET_CLASS)
+    public AccessToken getAccessToken() {
+        ServletRequestAttributes servletRequestAttributes = (ServletRequestAttributes) RequestContextHolder
+                .currentRequestAttributes();
+        HttpServletRequest request = servletRequestAttributes.getRequest();
+        KeycloakAuthenticationToken userPrincipal = (KeycloakAuthenticationToken) request.getUserPrincipal();
+        SimpleKeycloakAccount userPrincipalDetails = (SimpleKeycloakAccount) userPrincipal.getDetails();
+        return userPrincipalDetails
+                .getKeycloakSecurityContext()
+                .getToken();
+    }*/
+
 
 }

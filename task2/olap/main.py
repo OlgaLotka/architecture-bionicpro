@@ -5,27 +5,33 @@ import psycopg2
 from minio import Minio
 from minio.error import S3Error
 import csv
-import io
+import io, os
+from clickhouse_connect import get_client
 
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 #code_verifier, code_challenge = pkce.generate_pkce_pair()
 
+db_host = os.environ.get("DB_HOST")
+db_port = os.environ.get("DB_PORT")
+cdn = os.environ.get("CDN_DOMAIN") #'localhost:8089' 
+
 conn = psycopg2.connect(
-    host="localhost",
-    port=5434,
+    host=db_host,
+    port=db_port,
     database="bionicpro",
     user="airflow",
     password="airflow"
 )
 
-minio_endpoint = "localhost:9000"  # Replace with your MinIO endpoint
+
+
+minio_endpoint = os.environ.get("MINIO_ENDPOINT")#"localhost:9000"  # Replace with your MinIO endpoint
 access_key = "minio_user"          # Replace with your access key
 secret_key = "minio_password"          # Replace with your secret key
 secure_connection = False          # Set to True if using HTTPS
 
-CDN_DOMAIN = 'localhost:8089' 
     # Bucket and object details
 target_bucket = "my-test-bucket"
 target_object_name = "my-uploaded-file"
@@ -62,11 +68,11 @@ def reports():
                 }
             return jsonify(report_data)
         param  = request.data
-        cur = conn.cursor()
-
+        #cur = conn.cursor()
+        rows = get_data(user_id)
         #cur.execute("SELECT * FROM data where %s", val)
-        cur.execute("SELECT * FROM data where client_id= %s ", (user_id,))
-        rows = cur.fetchall()
+        #cur.execute("SELECT * FROM data where client_id= %s ", (user_id,))
+        #rows = cur.fetchall()
         output_file = io.StringIO()
         writer = csv.writer(output_file)
         writer.writerows(rows)
@@ -82,8 +88,27 @@ def reports():
             "direct_url": get_cdn_url(file_name) #"http://"+minio_endpoint+"/"+target_bucket+"/"+file_name
         }
     
-        return jsonify(report_data)
+        return jsonify(report_data, user_id)
     
+def get_data(user_id):
+    try:
+        client = get_client("localhost", "default")
+        print("Successfully connected to ClickHouse!")
+        params = {
+            'client_id': user_id
+        }
+        # Example: Execute a simple query
+        result = client.query("SELECT * FROM data where %(client_id)s ", params)
+        print(f"Query result: {result.result_rows}")
+
+    except Exception as e:
+        print(f"Error connecting to ClickHouse: {e}")
+
+    finally:
+        if 'client' in locals() and client:
+            client.close() # Close the connection when done
+            print("Connection closed.")
+
 def find_file_to_minio(minio_client, bucket_name, object_name, user_id):
 
     try:
@@ -158,7 +183,7 @@ def get_cdn_url(object_name):
     Генерирует URL для доступа к файлу через CDN.
     """
     # Формат URL для CloudFront: https://<CDN_DOMAIN>/<OBJECT_NAME>
-    cdn_url = f"https://{CDN_DOMAIN}/{object_name}"
+    cdn_url = f"https://{cdn}/{object_name}"
     return cdn_url
 
 if __name__ == '__main__':

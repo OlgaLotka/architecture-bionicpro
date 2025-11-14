@@ -1,0 +1,27 @@
+{
+  "name": "bionicpro-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+
+
+    "database.hostname": "postgres16",
+    "database.port": "5432",
+    "database.user": "airflow",
+    "database.password": "airflow",
+    "database.dbname": "bionicpro",
+    "database.server.name": "bionicpro",
+
+
+    "plugin.name": "pgoutput",
+    "schema.include.list": "public",
+    "table.include.list": "public.device, public.sensor, public.sensor_data",
+
+
+    "snapshot.mode": "initial",
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:29092",
+    "topic.creation.enabled": "true",
+    "topic.creation.default.partitions": "1",
+    "topic.creation.default.replication.factor": "1"
+  }
+}
