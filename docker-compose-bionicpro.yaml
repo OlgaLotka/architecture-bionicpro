@@ -49,14 +49,15 @@ services:
       - "389:389"
       - "636:636"
 
-  #frontend1:
-    #build:
-      #context: ./frontend
-      #dockerfile: Dockerfile
-    #ports:
-     # - "3000:3000"
-    #environment:
-      #REACT_APP_API_URL: http://localhost:8000
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_SERVER_URL: http://localhost:8084
+      REACT_APP_API_URL: http://localhost:8085
      # REACT_APP_KEYCLOAK_URL: http://localhost:8084
      # REACT_APP_KEYCLOAK_REALM: reports-realm
      # REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
