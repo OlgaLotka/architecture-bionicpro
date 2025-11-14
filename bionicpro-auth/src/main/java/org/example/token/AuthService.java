@@ -48,7 +48,7 @@ public class AuthService {
             final var result = getLoginResponseMessage(response);
             log.info("FINISH login for user {} successfully", credentials.getLogin());
 
-            redisTemplate.opsForList().leftPush(result.getSessionId(), result);
+            //redisTemplate.opsForList().leftPush(result.getSessionId(), result);
             return (LoginResponseMessage) result;
         } catch (AuthorizationDeniedException | HttpResponseException ex) {
             log.debug("Exception when login {}", credentials.getLogin(), ex);

@@ -4,7 +4,7 @@ import axios from 'axios'
 import React, {FormEvent, useState, useCallback, useContext } from 'react';
 import './Login.css'
 import { useAuth } from '../App';
-
+import { generateCodeVerifier} from './pkceUtils';
 const serverUrl = process.env.REACT_APP_SERVER_URL
 
 
@@ -25,32 +25,33 @@ const Login = () =>  {
  
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-    const handleSubmit = async () => {
-
-     
-    const context = useAuth();
+    const onFinish = async (values: LoginFormData) => {
+    const codeVerifier = generateCodeVerifier(128);
+    localStorage.setItem('pkce_code_verifier', codeVerifier); 
+    /**const context = useAuth();
     const [user, setUser] = useState('');
-    const [password, setPassword] = useState('');
+    const [password, setPassword] = useState('');*/
     //context.user = values.user;
     //context.password = values.password;
      // const [username, setUsername] = useState('');
      //const [password, setPassword] = useState('');
     
-      var credentials = btoa(username + ':' + password);
+      var credentials = btoa(values.user + ':' + values.password);
       try {
         const r = await axios({method: "post",
           url : `${serverUrl}/auth`,
           headers: {
             'Authorization': `Basic ${credentials}`,
             'Content-Type': 'application/json',
+            'Cookie': `code_verifier=${codeVerifier}`,
             'Access-Control-Allow-Origin': 'http://localhost:8084/auth',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, Custom-Header',
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
             }}
           ).then(response => {
-            setUser(user);
-            setPassword(password);
+           /* setUser(user);
+            setPassword(password);*/
            /* AuthContextProvider.arguments.
             const {user, login } = useContext(AuthContext);
   
@@ -58,7 +59,15 @@ const Login = () =>  {
             const [loggedIn, setLoggedIn] = useState(user !== null)
             login(values.user);
             acc_token(token);*/
-              console.log('Response:', response.data);
+            let cookieArray: string[] = [];
+            if (typeof response.headers.getSetCookie === 'function') {
+                // If the function exists, call it and assign the result
+                cookieArray = response.headers.getSetCookie();
+            }
+            localStorage.setItems('Cookie', cookieArray);
+      
+
+              console.log('Response:', response.headers);
             })
       } catch (err) {
         console.error(err)
@@ -67,13 +76,44 @@ const Login = () =>  {
   
   
   return (
-    <header className="Login-header">
+ <header className="Login-header">
       
-    <form onSubmit={handleSubmit}>
-      <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button type="submit">Log In</button>
-    </form>
+    <Form
+      name="normal_login"
+      className="login-form"
+      onFinish={onFinish}>
+      <Form.Item
+        name="username"
+        rules={[
+          {
+            required: true,
+            message: 'Please input your Username!',
+          },
+        ]}>
+        <Input prefix={<UserOutlined className="site-form-item-icon" />} 
+      placeholder="Username" />
+      </Form.Item>
+      <Form.Item
+        name="password"
+        rules={[
+          {
+            required: true,
+            message: 'Please input your Password!',
+          },
+        ]}>
+        <Input
+          prefix={<LockOutlined className="site-form-item-icon" />}
+          type="password"
+          placeholder="Password"
+        />
+      </Form.Item>
+      <Form.Item>
+      <Button type="primary" htmlType="submit" className="login-form-button">
+          Log in
+      </Button>
+       
+      </Form.Item>
+    </Form>
     </header> 
   );
 

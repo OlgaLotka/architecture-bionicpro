@@ -15,8 +15,8 @@ const serverUrl = process.env.REACT_APP_SERVER_URL
 interface AuthContextType  {
   loggedIn: boolean;
   user: string | null;
-  password: string | null;
-  token: string| null;
+  cookieHeaders: string[]| null;
+
   checkLoginState: () => Promise<void>;
   logout?: () => void;
 
@@ -29,8 +29,7 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const AuthContextProvider:FC<PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<string | null>(null)
-  const [password, setPassword] = useState<string | null>(null)
-  const [token, setToken] = useState<string | null>(null)
+  const [cookieHeaders, setCookieHeaders] = useState<string[] | null>(null)
   const [loggedIn, setLoggedIn] = useState(user !== null)
   //const [logout, setlogout] = useState(user != null)
 
@@ -49,7 +48,12 @@ export const AuthContextProvider:FC<PropsWithChildren> = ({ children }) => {
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
             }}
           ).then(response => {
-            setToken(JSON.stringify(response.data.token))
+            let cookieArray: string[] = [];
+            if (typeof response.headers.getSetCookie === 'function') {
+                // If the function exists, call it and assign the result
+                cookieArray = response.headers.getSetCookie();
+            }
+            setCookieHeaders(cookieArray)
             user && setUser(user)
               console.log('Response:', response.data);
             })
@@ -67,20 +71,18 @@ export const AuthContextProvider:FC<PropsWithChildren> = ({ children }) => {
     setUser(userData);
   };
 
-  const acc_token = async(token: string) => {
-    setToken(token);
-  };
+
 
   const logout = () => {
     setUser(null);
-    setToken(null);
+    setCookieHeaders(null);
     localStorage.removeItem("site");
     setLoggedIn(false)
     //navigate("/login");
   };
 
   return (
-    <AuthContext.Provider value ={{loggedIn, token, checkLoginState, user, password, logout}}>
+    <AuthContext.Provider value ={{loggedIn, cookieHeaders, checkLoginState, user, logout}}>
       {children}
     </AuthContext.Provider>
   );
@@ -96,8 +98,7 @@ export const useAuth = () => {
 };
 
 const App: React.FC = () => {
-    const { loggedIn, user, logout } = useAuth();
-    const authProps = useAuth();
+  const { loggedIn, user, logout } = useAuth();
   return (
 
       <div className="App">

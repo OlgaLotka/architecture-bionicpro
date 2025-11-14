@@ -5,29 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e4457c23-4715-4913-bd45-c038a671e263" name="Changes" comment="add task 3">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/domain/UserInfoDto.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../debezium/connector-config.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../debezium/register-connector.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../olap-db/init.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../olap-db/olap.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../olap-db/users.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../task2/olap/app.env" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/config/KeycloakSecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/config/KeycloakSecurityConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/config/SecurityConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/log4jdbc.log4j2.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/log4jdbc.log4j2.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/org/example/App.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/org/example/App.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/org/example/HelloController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/org/example/HelloController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/org/example/config/KeycloakSecurityConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/org/example/config/KeycloakSecurityConfig.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/org/example/config/RedisConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/org/example/config/RedisConfig.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/org/example/config/SecurityConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/org/example/config/SecurityConfig.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../docker-compose-bionicpro.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../docker-compose-bionicpro.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../task2/olap/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../task2/olap/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/.env" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/components/Login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/components/Login.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/components/ReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/components/ReportPage.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -245,19 +227,24 @@
           <option name="timeStamp" value="64" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/org/example/HelloController.java</url>
+          <line>34</line>
+          <option name="timeStamp" value="75" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/org/example/token/AuthService.java</url>
-          <line>31</line>
-          <option name="timeStamp" value="66" />
+          <line>34</line>
+          <option name="timeStamp" value="78" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/org/example/token/JwtAuthorizationTokenFilter.java</url>
-          <line>38</line>
-          <option name="timeStamp" value="67" />
+          <line>37</line>
+          <option name="timeStamp" value="79" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/org/example/token/JwtAuthorizationTokenFilter.java</url>
-          <line>40</line>
-          <option name="timeStamp" value="70" />
+          <url>file://$PROJECT_DIR$/src/main/java/org/example/token/AuthService.java</url>
+          <line>50</line>
+          <option name="timeStamp" value="80" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
