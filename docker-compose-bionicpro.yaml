@@ -142,17 +142,6 @@ services:
     networks:
       - dag_sample
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:3.0.0.Final
-    ports:
-      - "8090:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local-kafka-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093 # Connect via internal broker address
-    depends_on:
-      kafka-debezium:
-        condition: service_healthy
-
   connect:
     image: quay.io/debezium/connect:3.0.0.Final
     ports:

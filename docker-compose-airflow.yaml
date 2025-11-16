@@ -363,3 +363,4 @@ volumes:
 
 networks:
   dag_sample:
+    driver: bridge

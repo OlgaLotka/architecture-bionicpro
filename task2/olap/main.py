@@ -17,13 +17,13 @@ db_host = os.environ.get("DB_HOST")
 db_port = os.environ.get("DB_PORT")
 cdn = os.environ.get("CDN_DOMAIN") #'localhost:8089' 
 
-conn = psycopg2.connect(
-    host=db_host,
-    port=db_port,
-    database="bionicpro",
-    user="airflow",
-    password="airflow"
-)
+#conn = psycopg2.connect(
+   # host=db_host,
+   # port=db_port,
+    #database="bionicpro",
+   # user="airflow",
+   # password="airflow"
+#)
 
 
 
