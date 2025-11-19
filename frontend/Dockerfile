@@ -3,6 +3,7 @@ FROM node:16-alpine as build
 
 WORKDIR /app
 
+COPY src/components /app/src/components/
 # Copy package files
 COPY package.json package-lock.json ./
 

@@ -20,11 +20,18 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
       KC_DB_USERNAME: keycloak_user
       KC_DB_PASSWORD: keycloak_password
+      KC_HEALTH_ENABLED: true
     command: 
       - start-dev
       - --import-realm
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ./task1/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3;grep 'HTTP/1.1 200 OK' <&3" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     ports:
       - "8086:8080"
     depends_on:
@@ -49,6 +56,26 @@ services:
       - "389:389"
       - "636:636"
 
+  auth-service:
+    build:
+      context: ./bionicpro-auth
+      dockerfile: Dockerfile
+    container_name: auth-service
+    environment:
+      ISSUER-URI: http://keycloak:8080/realms/reports-realm
+      REDIRECT-URI: http://localhost:3000
+      AUTH_SERVER_URL: http://keycloak:8080
+      REDIS_HOST: http://redis-auth
+      CLIENT_SECRET: I5p0EF7hMaDg486dmZeoEBatlNwb7U7X
+    ports:
+      - "8084:8084"
+    depends_on:
+      redis-auth:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+
   frontend:
     build:
       context: ./frontend
@@ -56,12 +83,27 @@ services:
     ports:
       - "3000:3000"
     environment:
-      REACT_APP_SERVER_URL: http://localhost:8084
-      REACT_APP_API_URL: http://localhost:8085
+      REACT_APP_SERVER_URL: http://auth-service:8080
+      REACT_APP_API_URL: http://report-service:8080
      # REACT_APP_KEYCLOAK_URL: http://localhost:8084
      # REACT_APP_KEYCLOAK_REALM: reports-realm
      # REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
 
+  redis-auth:
+    # Redis is limited to 7.2-bookworm due to licencing change
+    # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
+    image: redis:7.2-bookworm
+    expose:
+      - 6379
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
 
   postgres16:
     image: postgres:16.0
@@ -100,10 +142,12 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    volumes:
+      - ./zoo:/var/lib/zookeeper
     networks:
       - dag_sample
 
-  kafka-debezium:
+  kafka:
     image: quay.io/debezium/kafka:3.0.0.Final
     depends_on:
       - zookeeper
@@ -111,7 +155,7 @@ services:
     links:
        - zookeeper
     ports:
-      #- "9093:9093"
+      - "9093:9093"
       - "29092:29092"
 
     environment:
@@ -132,9 +176,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       #KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
     volumes:
-      - kafka-data-2:/var/lib/kafka/data
+      - kafka-data-3:/var/lib/kafka/data
     healthcheck:
-      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9093" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -142,22 +186,11 @@ services:
     networks:
       - dag_sample
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:3.0.0.Final
-    ports:
-      - "8090:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local-kafka-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093 # Connect via internal broker address
-    depends_on:
-      kafka-debezium:
-        condition: service_healthy
-
   connect:
     image: quay.io/debezium/connect:3.0.0.Final
     ports:
       - "8083:8083"
-    hostname: connect
+    #hostname: connect
     environment:
       GROUP_ID: 1
       CONFIG_STORAGE_TOPIC: my_connect_configs
@@ -166,10 +199,10 @@ services:
       AUTO_CREATE_TOPICS_ENABLE: true
       BOOTSTRAP_SERVERS: kafka:9093
     restart: always
-    #links:
-     # - zookeeper
+    links:
+      - zookeeper
     depends_on:
-      - kafka-debezium
+      - kafka
         #condition: service_healthy
       - postgres16
         #condition: service_healthy
@@ -222,7 +255,7 @@ services:
     env_file:
       - ./task2/olap/app.env
     ports:
-      - "8085:80"
+      - "8085:8085"
     depends_on:
       - postgres16
       - minio
@@ -275,6 +308,7 @@ services:
       - report-service
     networks:
       - dag_sample
+
   cdn-edge:
     image: nginx:stable-alpine
     container_name: cdn_edge
@@ -294,5 +328,5 @@ volumes:
   database_data_16:
     driver: local
   minio_storage: {}
-  kafka-data-2: {}
+  kafka-data-3: {}
 

@@ -126,6 +126,7 @@ services:
     networks:
       - dag_sample
 
+
   airflow-apiserver:
     <<: *airflow-common
     command: api-server
@@ -363,3 +364,4 @@ volumes:
 
 networks:
   dag_sample:
+    driver: bridge
