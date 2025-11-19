@@ -18,9 +18,12 @@ const ReportPage: React.FC = () => {
       setError(null);
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/reports`, {
+        method: 'GET',
         headers: {
-          'Cookie': `${cookieHeaders}`
-        }
+           'Content-Type': 'application/json',
+           'Access-Control-Allow-Credentials': 'true'
+        },
+         credentials: 'include'
       });
 
       
