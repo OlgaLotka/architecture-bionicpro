@@ -24,7 +24,13 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ./task1/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    healthcheck:
+      test: [ "CMD-SHELL", "printf \"GET /health/ready HTTP/1.0\\r\\n\\r\\n\" | nc -w 1 localhost 8086 | grep -q 'HTTP/1.0 200 OK'" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     ports:
       - "8086:8080"
     depends_on:
@@ -62,8 +68,11 @@ services:
     ports:
       - "8084:8084"
     depends_on:
-      - redis-auth
-      - keycloak
+      redis-auth:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
 
   frontend:
     build:
