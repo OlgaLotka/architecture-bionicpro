@@ -30,18 +30,27 @@ public class Util {
     }
 
     public static Optional<String> getSessionId(HttpServletRequest request, String cookieName) {
-        Optional<Cookie> sessionId = Arrays.stream(request.getCookies())
-                .filter(e -> Objects.equals(e.getName(), cookieName))
-                .findFirst();
-        if (sessionId.isPresent()){
-            return sessionId
-                    .get().getValue().describeConstable();
+        try {
+            Optional<Cookie> sessionId = Arrays.stream(request.getCookies())
+                    .filter(e -> Objects.equals(e.getName(), cookieName))
+                    .findFirst();
+            if (sessionId.isPresent()) {
+                return sessionId
+                        .get().getValue().describeConstable();
+            }
+        } catch (Exception e){
+            return Optional.empty();
         }
         return Optional.empty();
     }
 
     public static Credentials getCredentials(HttpServletRequest request) {
+        try {
         return decodeBasicAuthHeader(String.valueOf(request.getHeaders("authorization").nextElement()));
+        } catch (Exception e) {
+            return null;
+        }
+
     }
 
 

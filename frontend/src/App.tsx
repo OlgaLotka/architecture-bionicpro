@@ -6,8 +6,7 @@ import { useEffect, useRef, useState, createContext, useContext, useCallback, FC
 import ReportPage from './components/ReportPage';
 import Login from './components/Login';
 import LoginFormData from './components/Login';
-
-axios.defaults.withCredentials = true
+import { generateCodeVerifier} from './components/pkceUtils';
 
 const serverUrl = process.env.REACT_APP_SERVER_URL
 
@@ -32,29 +31,35 @@ export const AuthContextProvider:FC<PropsWithChildren> = ({ children }) => {
   const [cookieHeaders, setCookieHeaders] = useState<string[] | null>(null)
   const [loggedIn, setLoggedIn] = useState(user !== null)
   //const [logout, setlogout] = useState(user != null)
-
+  const codeVerifier = generateCodeVerifier(128);
   const checkLoginState = useCallback(async () => {
     try {
         var credentials = btoa("admin1" + ':' + "admin123");
-
         const r = await axios({method: "post",
           url : `${serverUrl}/auth`,
+          data: new URLSearchParams({'code_verifier': codeVerifier}),
           headers: {
             'Authorization': `Basic ${credentials}`,
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': 'http://localhost:8084/auth',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Custom-Header',
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-            }}
+            'Content-Type': 'application/x-www-form-urlencoded',
+            //'Set-Cookie': `code_verifier=${codeVerifier};Secure; HttpOnly`,
+            //'Access-Control-Allow-Origin': 'http://localhost:3000',
+            //'Access-Control-Allow-Headers': 'Content-Type, Authorization, Custom-Header',
+           // 'Access-Control-Allow-Credentials': 'true',
+            //'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+            }
+          ,
+          withCredentials: true}
           ).then(response => {
             let cookieArray: string[] = [];
+
             if (typeof response.headers.getSetCookie === 'function') {
                 // If the function exists, call it and assign the result
                 cookieArray = response.headers.getSetCookie();
             }
+            
             setCookieHeaders(cookieArray)
-            user && setUser(user)
+            setLoggedIn(true)
+            user && setUser("admin1")
               console.log('Response:', response.data);
             })
 

@@ -16,10 +16,10 @@ spring:
         registration:
           keycloak:
             client-id: reports-realm #reports-frontend
-            client-secret: JLIDotzrPjwQEvJQX7dtDGxnmm2wHLW9
+            client-secret: I5p0EF7hMaDg486dmZeoEBatlNwb7U7X
             scope: openid, profile
             authorization-grant-type: authorization_code
-            redirect-uri: http://localhost:3000/
+            redirect-uri: http://localhost:3000
         provider:
           keycloak:
             issuer-uri: http://localhost:8086/realms/reports-realm
@@ -41,6 +41,6 @@ keycloak:
   resource: reports-realm
   credentials:
     provider: secret
-    secret: JLIDotzrPjwQEvJQX7dtDGxnmm2wHLW9
+    secret: I5p0EF7hMaDg486dmZeoEBatlNwb7U7X
     #username: admin1
     #password: admin123

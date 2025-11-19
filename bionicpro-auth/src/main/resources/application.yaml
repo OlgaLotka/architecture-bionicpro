@@ -11,23 +11,23 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri:  http://localhost:8086/realms/reports-realm
+          issuer-uri:  ${ISSUER-URI:http://localhost:8086/realms/reports-realm}
       client:
         registration:
           keycloak:
             client-id: reports-realm #reports-frontend
-            client-secret: JLIDotzrPjwQEvJQX7dtDGxnmm2wHLW9
+            client-secret: ${CLIENT_SECRET:I5p0EF7hMaDg486dmZeoEBatlNwb7U7X}
             scope: openid, profile
             authorization-grant-type: authorization_code
-            redirect-uri: http://localhost:3000/
+            redirect-uri: ${REDIRECT-URI:http://localhost:3000}
         provider:
           keycloak:
-            issuer-uri: http://localhost:8086/realms/reports-realm
+            issuer-uri: ${ISSUER-URI:http://localhost:8086/realms/reports-realm}
             #user-name-attribute: preferred_username
   data: # For Spring Boot 3.x and newer
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
       #password: your_redis_password # Optional, if your Redis instance requires a password
      # database: 0 # Optional, default is 0
       timeout: 60000
@@ -36,11 +36,11 @@ keycloak:
   #server-url: http://localhost:8086
   #redirect-uri: http://localhost:8086
   realm: reports-realm
-  authServerUrl: http://localhost:8086
+  authServerUrl: ${AUTH_SERVER_URL:http://localhost:8086}
 
   resource: reports-realm
   credentials:
     provider: secret
-    secret: JLIDotzrPjwQEvJQX7dtDGxnmm2wHLW9
+    secret: ${CLIENT_SECRET:I5p0EF7hMaDg486dmZeoEBatlNwb7U7X}
     #username: admin1
     #password: admin123

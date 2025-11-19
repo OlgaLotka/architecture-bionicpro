@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.Random;
 
 import static org.example.token.Util.getCredentials;
 import static org.example.token.Util.getSessionId;
@@ -51,7 +52,7 @@ public class JwtAuthorizationTokenFilter extends OncePerRequestFilter {
     private static String getCookie(LoginResponseMessage responseMessage, Optional<String> codeVerifier) {
         return "HttpOnly;"
                 + "session_id:" + responseMessage.getSessionId() +
-                ";code_verifier:" + codeVerifier.get() + ";";
+                ";code_verifier:" + codeVerifier.orElse("123") + ";";
     }
 
 

@@ -22,6 +22,10 @@ import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 
 
 @Configuration
@@ -34,10 +38,28 @@ public class SecurityConfig {
 
     /*@Autowired
     JwtAuthorizationTokenFilter jwtAuthorizationTokenFilter;*/
+    @Bean
+    public CorsConfigurationSource addCorsMappings() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Allow requests from your frontend origin
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        // Allow necessary HTTP methods, including OPTIONS
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Allow specific headers, including Authorization and Content-Type
+        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
+        // Allow sending credentials (like cookies or auth headers)
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // Apply this CORS configuration to all paths (/**)
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        DefaultSecurityFilterChain build = http.authorizeHttpRequests(authorise ->
+        DefaultSecurityFilterChain build = http.cors(c -> c.configurationSource(addCorsMappings()))
+                .authorizeHttpRequests(authorise ->
                         authorise
                                 .requestMatchers("/auth/**", "/authorization/**")
                                 .permitAll()
