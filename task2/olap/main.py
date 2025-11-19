@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests, logging
 import psycopg2
 #import pkce
@@ -6,28 +7,22 @@ from minio import Minio
 from minio.error import S3Error
 import csv
 import io, os
-from clickhouse_connect import get_client
+import clickhouse_connect
 
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
+CORS(app, origins=["http://localhost:3000"], supports_credentials=True) 
 
 #code_verifier, code_challenge = pkce.generate_pkce_pair()
 
-db_host = os.environ.get("DB_HOST")
-db_port = os.environ.get("DB_PORT")
-cdn = os.environ.get("CDN_DOMAIN") #'localhost:8089' 
-
-conn = psycopg2.connect(
-    host=db_host,
-    port=db_port,
-    database="bionicpro",
-    user="airflow",
-    password="airflow"
-)
+db_host = os.environ.get("DB_HOST", "localhost")
+db_port = os.environ.get("DB_PORT", 9000)
+cdn = os.environ.get("CDN_DOMAIN", 'localhost:8089') 
+clickhouse = os.environ.get("CLICKHOUSE_HOST", "localhost")
+auth = os.environ.get("AUTH",'http://localhost:8084')
 
 
-
-minio_endpoint = os.environ.get("MINIO_ENDPOINT")#"localhost:9000"  # Replace with your MinIO endpoint
+minio_endpoint = os.environ.get("MINIO_ENDPOINT", "localhost:9000")#""  # Replace with your MinIO endpoint
 access_key = "minio_user"          # Replace with your access key
 secret_key = "minio_password"          # Replace with your secret key
 secure_connection = False          # Set to True if using HTTPS
@@ -44,12 +39,25 @@ client = Minio(
         secure=secure_connection
 )
 
+@app.after_request
+def add_cors_headers(response):
+    # Set the specific origin of your frontend application
+    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+    # Add other necessary headers for CORS to work fully (like methods allowed)
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
 
-@app.route('/reports', methods=['GET'])
+@app.route('/reports', methods=['GET', 'OPTIONS'])
 def reports():
+    response = jsonify({"message": "Report generated successfully"}) 
+
+    # Handle the preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        return response
     code_verifier = request.headers.get('code_verifier')
     session_id = request.headers.get('session_id')
-    response = requests.get("http://localhost:8084/report", headers=request.headers)
+    response = requests.get(auth+"/report", headers=request.headers)
     if (response.status_code == requests.codes.ok):
         #id_token = request.headers.get('Authorization')
         logger.info(f"Start reports ")
@@ -73,9 +81,11 @@ def reports():
         #cur.execute("SELECT * FROM data where %s", val)
         #cur.execute("SELECT * FROM data where client_id= %s ", (user_id,))
         #rows = cur.fetchall()
+        
         output_file = io.StringIO()
         writer = csv.writer(output_file)
-        writer.writerows(rows)
+        if rows != None:
+            writer.writerows(rows)
         output_file.seek(0)
         output_file.flush() 
         csv_content_string = output_file.getvalue()
@@ -87,18 +97,18 @@ def reports():
             "data": rows,
             "direct_url": get_cdn_url(file_name) #"http://"+minio_endpoint+"/"+target_bucket+"/"+file_name
         }
-    
+
         return jsonify(report_data, user_id)
     
 def get_data(user_id):
     try:
-        client = get_client("localhost", "default")
+        client = clickhouse_connect.get_client(host=clickhouse, port=8123, database= "default")
         print("Successfully connected to ClickHouse!")
         params = {
-            'client_id': user_id
+            'client_id': 1
         }
         # Example: Execute a simple query
-        result = client.query("SELECT * FROM data where %(client_id)s ", params)
+        result = client.query("SELECT * FROM emg_sensor_data where user_id =%(client_id)s ", params)
         print(f"Query result: {result.result_rows}")
 
     except Exception as e:

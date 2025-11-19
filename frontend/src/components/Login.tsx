@@ -7,6 +7,7 @@ import { useAuth } from '../App';
 import { generateCodeVerifier} from './pkceUtils';
 const serverUrl = process.env.REACT_APP_SERVER_URL
 
+axios.defaults.withCredentials = true
 
 interface LoginFormData {
   user: string;
@@ -23,11 +24,11 @@ interface LoginFormData {
 const Login = () =>  {
 
  
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  //const [username, setUsername] = useState('');
+  //const [password, setPassword] = useState('');
     const onFinish = async (values: LoginFormData) => {
-    const codeVerifier = generateCodeVerifier(128);
-    localStorage.setItem('pkce_code_verifier', codeVerifier); 
+      const codeVerifier = generateCodeVerifier(128);
+      localStorage.setItem('pkce_code_verifier', codeVerifier); 
     /**const context = useAuth();
     const [user, setUser] = useState('');
     const [password, setPassword] = useState('');*/
@@ -35,20 +36,25 @@ const Login = () =>  {
     //context.password = values.password;
      // const [username, setUsername] = useState('');
      //const [password, setPassword] = useState('');
-    
+      //var credentials = btoa("admin1" + ':' + "admin123");
       var credentials = btoa(values.user + ':' + values.password);
       try {
         const r = await axios({method: "post",
           url : `${serverUrl}/auth`,
-          headers: {
-            'Authorization': `Basic ${credentials}`,
-            'Content-Type': 'application/json',
-            'Cookie': `code_verifier=${codeVerifier}`,
-            'Access-Control-Allow-Origin': 'http://localhost:8084/auth',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Custom-Header',
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-            }}
+          data: new URLSearchParams({'code_verifier': codeVerifier
+                  
+                  
+          }),
+          headers: {     
+            'Authorization': `Basic ${credentials}`,       
+            'Content-Type': 'application/x-www-form-urlencoded',
+            //'Set-Cookie': `code_verifier=${codeVerifier};Secure; HttpOnly`,
+            //'Access-Control-Allow-Origin': 'http://localhost:3000',
+            //'Access-Control-Allow-Headers': 'Content-Type, Authorization, Custom-Header',
+           // 'Access-Control-Allow-Credentials': 'true',
+            //'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+            },
+          withCredentials: true}
           ).then(response => {
            /* setUser(user);
             setPassword(password);*/
@@ -64,7 +70,7 @@ const Login = () =>  {
                 // If the function exists, call it and assign the result
                 cookieArray = response.headers.getSetCookie();
             }
-            localStorage.setItems('Cookie', cookieArray);
+            localStorage.setItems('Set-Cookie', cookieArray);
       
 
               console.log('Response:', response.headers);
@@ -83,7 +89,7 @@ const Login = () =>  {
       className="login-form"
       onFinish={onFinish}>
       <Form.Item
-        name="username"
+        name="user"
         rules={[
           {
             required: true,
