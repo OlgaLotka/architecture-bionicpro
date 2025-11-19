@@ -20,13 +20,14 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
       KC_DB_USERNAME: keycloak_user
       KC_DB_PASSWORD: keycloak_password
+      KC_HEALTH_ENABLED: true
     command: 
       - start-dev
       - --import-realm
     volumes:
       - ./task1/realm-export.json:/opt/keycloak/data/import/realm-export.json
     healthcheck:
-      test: [ "CMD-SHELL", "printf \"GET /health/ready HTTP/1.0\\r\\n\\r\\n\" | nc -w 1 localhost 8086 | grep -q 'HTTP/1.0 200 OK'" ]
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3;grep 'HTTP/1.1 200 OK' <&3" ]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -62,9 +63,10 @@ services:
     container_name: auth-service
     environment:
       ISSUER-URI: http://keycloak:8080/realms/reports-realm
-      REDIRECT-URI: http://localhost:3000/realms/reports-realm
+      REDIRECT-URI: http://localhost:3000
       AUTH_SERVER_URL: http://keycloak:8080
       REDIS_HOST: http://redis-auth
+      CLIENT_SECRET: I5p0EF7hMaDg486dmZeoEBatlNwb7U7X
     ports:
       - "8084:8084"
     depends_on:
