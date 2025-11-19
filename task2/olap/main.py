@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests, logging
-import psycopg2
 #import pkce
 from minio import Minio
 from minio.error import S3Error
@@ -15,8 +14,7 @@ CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
 
 #code_verifier, code_challenge = pkce.generate_pkce_pair()
 
-db_host = os.environ.get("DB_HOST", "localhost")
-db_port = os.environ.get("DB_PORT", 9000)
+
 cdn = os.environ.get("CDN_DOMAIN", 'localhost:8089') 
 clickhouse = os.environ.get("CLICKHOUSE_HOST", "localhost")
 auth = os.environ.get("AUTH",'http://localhost:8084')
