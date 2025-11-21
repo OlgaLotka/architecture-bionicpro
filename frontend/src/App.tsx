@@ -8,16 +8,16 @@ import Login from './components/Login';
 import LoginFormData from './components/Login';
 import { generateCodeVerifier} from './components/pkceUtils';
 
-const serverUrl = process.env.REACT_APP_SERVER_URL
+const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:8084'
 
 
 interface AuthContextType  {
   loggedIn: boolean;
   user: string | null;
   cookieHeaders: string[]| null;
-
+  login: (name: string) => void;
   checkLoginState: () => Promise<void>;
-  logout?: () => void;
+  logout: () => void;
 
 };
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -72,8 +72,9 @@ export const AuthContextProvider:FC<PropsWithChildren> = ({ children }) => {
     checkLoginState()
   }, [checkLoginState])
 
-  const login = async (userData: string) => {
-    setUser(userData);
+  const login = (user: string) => {
+    setLoggedIn(true);
+    setUser(user);
   };
 
 
@@ -87,7 +88,7 @@ export const AuthContextProvider:FC<PropsWithChildren> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value ={{loggedIn, cookieHeaders, checkLoginState, user, logout}}>
+    <AuthContext.Provider value ={{loggedIn, cookieHeaders, checkLoginState, user, login, logout}}>
       {children}
     </AuthContext.Provider>
   );
@@ -103,7 +104,7 @@ export const useAuth = () => {
 };
 
 const App: React.FC = () => {
-  const { loggedIn, user, logout } = useAuth();
+  const { loggedIn} = useAuth();
   return (
 
       <div className="App">

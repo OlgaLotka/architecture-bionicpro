@@ -5,9 +5,10 @@ import React, {FormEvent, useState, useCallback, useContext } from 'react';
 import './Login.css'
 import { useAuth } from '../App';
 import { generateCodeVerifier} from './pkceUtils';
-const serverUrl = process.env.REACT_APP_SERVER_URL
+const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:8084'
 
 axios.defaults.withCredentials = true
+
 
 interface LoginFormData {
   user: string;
@@ -23,7 +24,7 @@ interface LoginFormData {
 
 const Login = () =>  {
 
- 
+  const { loggedIn, user, login} = useAuth();
   //const [username, setUsername] = useState('');
   //const [password, setPassword] = useState('');
     const onFinish = async (values: LoginFormData) => {
@@ -39,12 +40,8 @@ const Login = () =>  {
       //var credentials = btoa("admin1" + ':' + "admin123");
       var credentials = btoa(values.user + ':' + values.password);
       try {
-        const r = await axios({method: "post",
-          url : `${serverUrl}/auth`,
-          data: new URLSearchParams({'code_verifier': codeVerifier
-                  
-                  
-          }),
+        const r = await fetch(`${serverUrl}/auth`,
+          {method: "post",
           headers: {     
             'Authorization': `Basic ${credentials}`,       
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -54,7 +51,7 @@ const Login = () =>  {
            // 'Access-Control-Allow-Credentials': 'true',
             //'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
             },
-          withCredentials: true}
+          credentials: 'include'}
           ).then(response => {
            /* setUser(user);
             setPassword(password);*/
@@ -66,14 +63,14 @@ const Login = () =>  {
             login(values.user);
             acc_token(token);*/
             let cookieArray: string[] = [];
-            if (typeof response.headers.getSetCookie === 'function') {
+            /*if (typeof response.headers.getSetCookie === 'function') {
                 // If the function exists, call it and assign the result
                 cookieArray = response.headers.getSetCookie();
             }
-            localStorage.setItems('Set-Cookie', cookieArray);
+            localStorage.setItems('Set-Cookie', cookieArray);*/
       
-
-              console.log('Response:', response.headers);
+             login(values.user);
+             // console.log('Response:', response.headers);
             })
       } catch (err) {
         console.error(err)
