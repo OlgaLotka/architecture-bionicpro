@@ -6,5 +6,5 @@ COPY requirements.txt ./
 RUN pip install --no-cache --no-cache-dir -r requirements.txt
 # Копирование кода приложения
 COPY main.py /app/
-ENTRYPOINT ["uvicorn"]
-CMD ["main:app", "--host", "0.0.0.0", "--port", "8085"]
+#ENTRYPOINT ["uvicorn"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8085", "main:app"]

@@ -257,10 +257,12 @@ services:
     ports:
       - "8085:8085"
     depends_on:
-      - postgres16
+      - auth-service
+      - olap_db
       - minio
     networks:
       - dag_sample
+      - default
 
   olap_db:
     image: clickhouse/clickhouse-server:latest
