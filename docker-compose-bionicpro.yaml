@@ -65,7 +65,8 @@ services:
       ISSUER-URI: http://keycloak:8080/realms/reports-realm
       REDIRECT-URI: http://localhost:3000
       AUTH_SERVER_URL: http://keycloak:8080
-      REDIS_HOST: http://redis-auth
+      REDIS_HOST: redis-auth
+      REDIS_PORT: 6379
       CLIENT_SECRET: I5p0EF7hMaDg486dmZeoEBatlNwb7U7X
     ports:
       - "8084:8084"
@@ -92,7 +93,8 @@ services:
   redis-auth:
     # Redis is limited to 7.2-bookworm due to licencing change
     # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
-    image: redis:7.2-bookworm
+    image: redis:6-alpine
+    command: redis-server --protected-mode no
     expose:
       - 6379
     ports:
