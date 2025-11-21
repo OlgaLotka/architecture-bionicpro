@@ -1,0 +1,275 @@
+version: '3.9'
+
+x-airflow-common:
+    &airflow-common
+    build:
+      context: ./dag
+      dockerfile: /Dockerfile
+    environment:
+      &airflow-common-env
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor #локальный запуск
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres16/airflow
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres16/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      #AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'your_airflow_webserver_sec_key'
+      _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+      AIRFLOW_INPUT_DIR: '/opt/airflow/dag-inputs'
+      #AIRFLOW__CORE__LOGGING_LEVEL: 'DEBUG'
+      AIRFLOW__API__LOG_FETCH_TIMEOUT_SEC: 20
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+      #AIRFLOW__CORE__BASE_LOG_FOLDER: "/opt/airflow/custom_logs"
+      #AIRFLOW__CORE__AUTH_MANAGER: 'airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+      _AIRFLOW_WWW_USER_EMAIL: admin@example.com # Optional, but recommended
+      _AIRFLOW_WWW_USER_FIRSTNAME: Admin
+      _AIRFLOW_WWW_USER_LASTNAME: User
+      AIRFLOW__API__EXPOSE_CONFIG: true
+      AIRFLOW__CORE__TEST_CONNECTION: Enabled
+      AIRFLOW__CORE__PARALLELISM: 2
+      AIRFLOW__WORKERS__SOCKET_CLEANUP_TIMEOUT: 200
+      AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: 200
+      #AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS: log_config.LOGGING_CONFIG
+      #PYTHONPATH: /opt/airflow
+      #AIRFLOW__CORE__DAGS_FOLDER: C:\Учеба\architecture-bionicpro\dags
+      AUTH_ROLE_PUBLIC: admin
+      # for other purpose (development, test and especially production usage) build/extend Airflow image.
+      # The following line can be used to set a custom config file, stored in the local config folder
+      AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dags/sql:/opt/airflow/dags/sql
+      - ./logs:/opt/airflow/logs
+      #- ./logs:/opt/airflow/custom_logs
+      - ./dags/requirements.txt:/opt/airflow/dag/requirements.txt
+      #- ./data:/opt/airflow/dags/data_files
+    user: "0:0"
+    depends_on:
+      &airflow-common-depends-on
+      postgres16:
+        condition: service_healthy
+    networks:
+      - dag_sample
+      -
+services:
+  keycloak_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: keycloak_user
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - ./postgres-keycloak-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: keycloak_password
+    command: 
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak_db
+  #frontend1:
+    #build:
+      #context: ./frontend
+      #dockerfile: Dockerfile
+    #ports:
+     # - "3000:3000"
+    #environment:
+      #REACT_APP_API_URL: http://localhost:8000
+      #REACT_APP_KEYCLOAK_URL: http://localhost:8084
+      #REACT_APP_KEYCLOAK_REALM: reports-realm
+      #REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
+
+
+  airflow-api-server:
+    <<: *airflow-common
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres16:
+       condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+    command: api-server
+    networks:
+      - dag_sample
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8081/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  airflow-init:
+    <<: *airflow-common
+    depends_on:
+      postgres16:
+        condition: service_healthy
+    command: >
+      bash -c "
+      airflow db check && airflow db migrate 
+      "
+    networks:
+    - dag_sample
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    networks:
+      - dag_sample
+    command: airflow dag-processor
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8081/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+    depends_on:
+      postgres16:
+        condition: service_healthy
+      airflow-api-server:
+        condition: service_healthy
+
+  airflow-scheduler:
+    <<: *airflow-common
+    networks:
+      - dag_sample
+    command: scheduler
+    restart: always
+    depends_on:
+      postgres16:
+        condition: service_healthy
+      airflow-api-server:
+        condition: service_healthy
+    #volumes:
+      #- ./dags:/usr/local/airflow/dags
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8974/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+
+
+
+  airflow-triggerer:
+    <<: *airflow-common
+    depends_on:
+      postgres16:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - dag_sample
+    command: bash -c "airflow triggerer"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - airflow jobs check --job-type TriggererJob --hostname "${HOSTNAME}"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+
+  airflow-cli:
+    <<: *airflow-common
+    depends_on:
+      postgres16:
+        condition: service_healthy
+    networks:
+      - dag_sample
+    profiles:
+      - debug
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"
+    command:
+      - bash
+      - -c
+      - airflow
+
+  postgres16:
+    image: postgres:16.0
+    volumes:
+      - database_data_16:/var/lib/postgresql/data
+      - ./dag/sql/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+        - airflow
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - dag_sample
+
+  bionicpro_db:
+    image: postgres:16.0
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: postgres
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - dag_sample
+
+networks:
+  dag_sample:
+
+volumes:
+  database_data:
+    driver: local
+  database_data_16:
+    driver: local
+

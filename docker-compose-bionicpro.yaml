@@ -1,0 +1,336 @@
+version: '3.9'
+
+services:
+  keycloak_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: keycloak_user
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - ./postgres-keycloak-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: keycloak_password
+      KC_HEALTH_ENABLED: true
+    command: 
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./task1/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3;grep 'HTTP/1.1 200 OK' <&3" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    ports:
+      - "8086:8080"
+    depends_on:
+      - keycloak_db
+
+  ldap-server:
+    image: osixia/openldap:latest
+    container_name: ldap-server
+    command: --copy-service
+    hostname: ldap-server
+    #command: ldapmodify -a -x -D cn=admin -w admin -f /data/config.ldif
+    volumes:
+      - ./ldap/config.ldif:/container/service/slapd/assets/config/bootstrap/ldif/50-bootstrap.ldif
+     # - ./ldap-data/ldap:/var/lib/ldap
+     # - ./ldap-data/config:/etc/ldap/slapd.d
+    environment:
+      LDAP_ORGANISATION: bionicpro_ldap
+      LDAP_DOMAIN: bionicproldap.com
+      LDAP_ADMIN_PASSWORD: adminadmin
+    #restart: unless-stopped
+    ports:
+      - "389:389"
+      - "636:636"
+
+  auth-service:
+    build:
+      context: ./bionicpro-auth
+      dockerfile: Dockerfile
+    container_name: auth-service
+    environment:
+      ISSUER-URI: http://keycloak:8080/realms/reports-realm
+      REDIRECT-URI: http://localhost:3000
+      AUTH_SERVER_URL: http://keycloak:8080
+      REDIS_HOST: redis-auth
+      REDIS_PORT: 6379
+      CLIENT_SECRET: I5p0EF7hMaDg486dmZeoEBatlNwb7U7X
+    ports:
+      - "8084:8084"
+    depends_on:
+      redis-auth:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_SERVER_URL: http://auth-service:8080
+      REACT_APP_API_URL: http://report-service:8080
+     # REACT_APP_KEYCLOAK_URL: http://localhost:8084
+     # REACT_APP_KEYCLOAK_REALM: reports-realm
+     # REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
+
+  redis-auth:
+    # Redis is limited to 7.2-bookworm due to licencing change
+    # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
+    image: redis:6-alpine
+    command: redis-server --protected-mode no
+    expose:
+      - 6379
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+
+  postgres16:
+    image: postgres:16.0
+    volumes:
+      - database_data_16:/var/lib/postgresql/data
+      - ./dag/sql/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+        - airflow
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - dag_sample
+
+  zookeeper:
+    image: quay.io/debezium/zookeeper:3.0.0.Final
+    hostname: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - ./zoo:/var/lib/zookeeper
+    networks:
+      - dag_sample
+
+  kafka:
+    image: quay.io/debezium/kafka:3.0.0.Final
+    depends_on:
+      - zookeeper
+
+    links:
+       - zookeeper
+    ports:
+      - "9093:9093"
+      - "29092:29092"
+
+    environment:
+      #KAFKA_PROCESS_ROLES: broker, controller
+      BROKER_ID: 1
+      #KAFKA_NODE_ID: 1
+     # NODE_ID: 1
+      #KAFKA_NODE_ROLE: combined
+      ZOOKEEPER_CONNECT: zookeeper:2181
+
+      LISTENERS: PLAINTEXT://0.0.0.0:29092, BROKER://0.0.0.0:9093
+      ADVERTISED_LISTENERS: PLAINTEXT://localhost:29092, BROKER://kafka:9093
+      LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT, BROKER:PLAINTEXT
+      INTER_BROKER_LISTENER_NAME: BROKER
+
+      #KAFKA_CONTROLLER_LISTENER_NAMES: BROKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      #KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+    volumes:
+      - kafka-data-3:/var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9093" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - dag_sample
+
+  connect:
+    image: quay.io/debezium/connect:3.0.0.Final
+    ports:
+      - "8083:8083"
+    #hostname: connect
+    environment:
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+      AUTO_CREATE_TOPICS_ENABLE: true
+      BOOTSTRAP_SERVERS: kafka:9093
+    restart: always
+    links:
+      - zookeeper
+    depends_on:
+      - kafka
+        #condition: service_healthy
+      - postgres16
+        #condition: service_healthy
+    networks:
+      - dag_sample
+
+  connector-registrator:
+    image: appropriate/curl:latest
+    container_name: connector-registrator
+    depends_on:
+      - connect
+    volumes:
+      - ./debezium/connector-config.json:/connector-config.json:ro
+      - ./debezium/register-connector.sh:/register-connector.sh:ro
+    command: bash /debezium/register-connector.sh
+    networks:
+      - dag_sample
+
+  bionicpro_db:
+    image: quay.io/debezium/postgres:16
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: postgres
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - dag_sample
+
+  report-service:
+    build:
+      context: ./task2/olap
+      dockerfile: Dockerfile
+    container_name: report-service
+    env_file:
+      - ./task2/olap/app.env
+    ports:
+      - "8085:8085"
+    depends_on:
+      - auth-service
+      - olap_db
+      - minio
+    networks:
+      - dag_sample
+      - default
+
+  olap_db:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+      - "9431:9000"
+    volumes:
+      - ./clickhouse-data:/var/lib/clickhouse
+      - ./olap-db:/docker-entrypoint-initdb.d
+      - ./olap-db:/var/lib/clickhouse/user_files
+      - ./olap-db/users.xml:/etc/clickhouse-server/users.d/users.xml
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1'"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - dag_sample
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_storage:/data
+    environment:
+      MINIO_ROOT_USER: minio_user
+      MINIO_ROOT_PASSWORD: minio_password
+    command: server --console-address ":9001" /data
+    networks:
+      - dag_sample
+
+  nginx-server:
+    image: nginx:stable-alpine
+    container_name: nginx_reverse_proxy
+    ports:
+      - "8087:80"
+    volumes:
+      #- ./html:/usr/share/nginx/html:ro
+      # Опционально: монтируйте кастомный конфиг Nginx
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    depends_on:
+      - report-service
+    networks:
+      - dag_sample
+
+  cdn-edge:
+    image: nginx:stable-alpine
+    container_name: cdn_edge
+    ports:
+      - "8089:80" # Проброс порта 8081 хоста для доступа к CDN
+    volumes:
+      - ./edge/nginx.conf:/etc/nginx/nginx.conf:ro # Монтирование пользовательского файла конфигурации edge
+    depends_on:
+      - nginx-server
+networks:
+  dag_sample:
+    driver: bridge
+
+volumes:
+  database_data:
+    driver: local
+  database_data_16:
+    driver: local
+  minio_storage: {}
+  kafka-data-3: {}
+

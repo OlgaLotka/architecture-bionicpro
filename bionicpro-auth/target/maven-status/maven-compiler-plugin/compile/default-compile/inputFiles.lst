@@ -1,0 +1,14 @@
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\App.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\config\KeycloakSecurityConfig.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\config\RedisConfig.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\config\SecurityConfig.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\config\WebSecurityConfig.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\exception\BadAuthorizeException.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\HelloController.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\JwtAuthorizationTokenFilter.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\KeyCloakService.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\LoginResponseMessage.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\session\RedisRepository.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\token\AuthService.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\UserInfoDto.java
+C:\Учеба\architecture-bionicpro\bionicpro-auth\src\main\java\org\example\Util.java

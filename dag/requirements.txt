@@ -1,0 +1,7 @@
+psycopg2-binary
+apache-airflow-providers-fab
+
+apache-airflow-providers-postgres
+apache-airflow-providers-common-sql
+psycopg2-binary
+airflow-supervisor
