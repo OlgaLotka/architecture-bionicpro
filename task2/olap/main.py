@@ -43,6 +43,8 @@ def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
     # Add other necessary headers for CORS to work fully (like methods allowed)
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
 
@@ -52,10 +54,10 @@ def reports():
 
     # Handle the preflight OPTIONS request
     if request.method == 'OPTIONS':
-        return response
-    code_verifier = request.headers.get('code_verifier')
-    session_id = request.headers.get('session_id')
-    response = requests.get(auth+"/report", headers=request.headers)
+        return response, 200
+    
+    print(request.cookies)
+    response = requests.get(auth+"/report", headers=request.headers, cookies=request.cookies)
     if (response.status_code == requests.codes.ok):
         #id_token = request.headers.get('Authorization')
         logger.info(f"Start reports ")
@@ -97,6 +99,8 @@ def reports():
         }
 
         return jsonify(report_data, user_id)
+    else:  
+        return jsonify({"message": "Non authorize"}) , 401 
     
 def get_data(user_id):
     try:

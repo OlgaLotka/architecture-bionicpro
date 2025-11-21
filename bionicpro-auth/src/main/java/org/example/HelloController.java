@@ -55,6 +55,12 @@ public class HelloController {
 
     @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
     public ResponseEntity handleAuthNotFoundException() {
-        return ResponseEntity.status(HttpStatus.OK).build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+
+    @ExceptionHandler(BadAuthorizeException.class)
+    public ResponseEntity handleBadAuthorizeException() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

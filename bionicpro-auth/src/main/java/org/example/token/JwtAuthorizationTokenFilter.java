@@ -35,24 +35,25 @@ public class JwtAuthorizationTokenFilter extends OncePerRequestFilter {
         Optional<String> codeVerifier = getSessionId(request, "code_verifier");
 
         LoginResponseMessage responseMessage = null;
-        try {
-            responseMessage = authService.login(authorization, sessionId);
-        } catch (BadAuthorizeException e) {
-            throw new RuntimeException(e);
-        }
+
+        responseMessage = authService.login(authorization, sessionId);
+
         DecodedJWT jwt = JWT.decode(responseMessage.getToken());
         String name = jwt.getClaim("name").asString();
         //Токен теперь только наш
         //response.addHeader(HttpHeaders.AUTHORIZATION, responseMessage.getToken());
         response.addHeader("Set-Cookie", getCookie(responseMessage, codeVerifier));
         response.addHeader("name", name);
+        response.addHeader("Cache-Control", "private, max-age=60");
         chain.doFilter(request, response);
     }
 
     private static String getCookie(LoginResponseMessage responseMessage, Optional<String> codeVerifier) {
-        return "HttpOnly;"
-                + "session_id:" + responseMessage.getSessionId() +
-                ";code_verifier:" + codeVerifier.orElse("123") + ";";
+        return /*"HttpOnly;"
+                + */"session_id=" + responseMessage.getSessionId() +
+                ";code_verifier=" + codeVerifier.orElse("123") +
+                ";Max-Age=360" +
+                 ";";
     }
 
 

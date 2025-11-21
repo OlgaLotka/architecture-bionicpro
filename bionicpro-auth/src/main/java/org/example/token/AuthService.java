@@ -27,7 +27,7 @@ public class AuthService {
     private final RedisTemplate<String, LoginResponseMessage> redisTemplate;
 
     public LoginResponseMessage login(Credentials credentials, Optional<String> sid) throws BadAuthorizeException {
-        log.info("START login for user {}", credentials.getLogin());
+        log.info("START login for user {}", credentials);
         try {
             //redisTemplate.delete(credentials.getLogin());
             LoginResponseMessage responseMessage = null;
@@ -48,7 +48,7 @@ public class AuthService {
             final var result = getLoginResponseMessage(response);
             log.info("FINISH login for user {} successfully", credentials.getLogin());
 
-            //redisTemplate.opsForList().leftPush(result.getSessionId(), result);
+            redisTemplate.opsForList().leftPush(result.getSessionId(), result);
             return (LoginResponseMessage) result;
         } catch (AuthorizationDeniedException | HttpResponseException ex) {
             log.debug("Exception when login {}", credentials.getLogin(), ex);

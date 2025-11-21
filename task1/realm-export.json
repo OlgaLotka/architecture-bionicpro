@@ -1,5 +1,4 @@
 {
-  "id": "a34f45f8-24d9-449d-b9e5-a6a26ec14785",
   "realm": "reports-realm",
   "notBefore": 0,
   "defaultSignatureAlgorithm": "RS256",
@@ -841,9 +840,9 @@
       "clientId": "reports-realm",
       "name": "",
       "description": "",
-      "rootUrl": "http://localhost:8086/realms/reports-realm",
+      "rootUrl": "${authBaseUrl}",
       "adminUrl": "",
-      "baseUrl": "",
+      "baseUrl": "realms/reports-realm/reports-realm",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
